@@ -1,3 +1,4 @@
 bin
 data
 sdm_log
+.cache

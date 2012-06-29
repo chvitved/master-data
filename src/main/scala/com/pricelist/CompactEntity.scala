@@ -23,7 +23,6 @@ object CompactEntity {
         }
       }
       createCompactEntity(eName, indexValueTuple)
-      
 	}
 	
 	private def createCompactEntity(name: String, values: Map[Int, Any]) = {
@@ -35,25 +34,29 @@ object CompactEntity {
 	}
 	
 	private def get(ce: CompactEntity): Map[String, Any] = {
-	  def isIndex(index: Int) = (ce.indexBitmap & (1 << index)) > 0
-
 	  val indexes = (0 to 31).foldRight(List[Int]()) {(index, indexList) => 
-	    if (isIndex(index)) {
+	    if (containsIndex(ce, index)) {
 	      index :: indexList
 	    } else indexList
 	  }
 
 	  val indexMap = reverseMap(ce.name) 
 	  Map(indexes.map(indexMap(_)).zip(ce.valueArray):_*)
-	  
+	}
+	
+	private def containsIndex(ce: CompactEntity, index: Int): Boolean = {
+	  (ce.indexBitmap & (1 << index)) > 0
 	}
 }
 
-class CompactEntity private(private val name: String, private val indexBitmap: Int, private val valueArray: Array[Any]) {
+class CompactEntity private(val name: String, private val indexBitmap: Int, private val valueArray: Array[Any]) {
   
   def get : Map[String, Any] = {
     CompactEntity.get(this)
   }
+  
+  //TODO stupid impl....make efficient
+  def getValue(attribute: String) = get(attribute)
   
   override def toString() = get.toString
   

@@ -14,11 +14,11 @@ object ObjectParser {
   
 	var warnFields = Set[Field]();
   
-  	def apply(objects: Seq[AnyRef]): Seq[CompactEntity] = {
+  	def apply(objects: Set[Any]): Set[CompactEntity] = {
   	  objects.map(apply(_))
 	}
 
-  	def apply(o: AnyRef): CompactEntity = {
+  	private def apply(o: Any): CompactEntity = {
 	  val clas = o.getClass
 	  val fs = clas.getDeclaredFields
 	  fs.foreach(_.setAccessible(true))
@@ -38,7 +38,7 @@ object ObjectParser {
 	      map
 	    }
 	  }
-	  CompactEntity(clas.getName, map)
+	  CompactEntity(clas.getSimpleName, map)
 	}
   	
   	def canParseValue(value: Any) = {
