@@ -34,7 +34,7 @@ object Loader {
 		    val name = entities.elements.next().name
 		    map + (name -> entities)
 		}
-		new Pricelist(pricelistMap, previous)
+		Pricelist(pricelistMap, previous)
 	}
 	
 	private def printMem() = {

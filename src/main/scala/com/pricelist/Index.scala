@@ -2,7 +2,7 @@ package com.pricelist
 import scala.collection.immutable.SortedMap
 import scala.collection.immutable.TreeMap
 
-object NewIndex {
+object Index {
   private def buildMap[CompactEntity,IndexType<%Ordered[IndexType]](data: Set[CompactEntity], indexMethod: (CompactEntity) => IndexType) : SortedMap[IndexType, Set[CompactEntity]] = {
     val mutableMap = new scala.collection.mutable.HashMap[IndexType, scala.collection.mutable.ListBuffer[CompactEntity]]() {
       override def default(key: IndexType) = {
@@ -18,29 +18,33 @@ object NewIndex {
   }
   
   def create[Entity,IndexType<%Ordered[IndexType]](data: Set[CompactEntity], indexMethod: (CompactEntity) => IndexType ) = {
-    new NewIndex(buildMap(data, indexMethod), indexMethod)
+    new Index(buildMap(data, indexMethod), indexMethod)
   }
 }
 
-class NewIndex[IndexType<%Ordered[IndexType]] (val map: SortedMap[IndexType, Set[CompactEntity]], indexMethod: (CompactEntity) => IndexType) {
+class Index[IndexType<%Ordered[IndexType]] (val map: SortedMap[IndexType, Set[CompactEntity]], indexMethod: (CompactEntity) => IndexType) {
 
   def === (key: IndexType) : Set[CompactEntity] = {
     map.getOrElse(key, Set[CompactEntity]())
   }
   
-  def + (ce: CompactEntity): NewIndex[IndexType] = {
+  def + (ce: CompactEntity): Index[IndexType] = {
     val key = indexMethod(ce)
     val set = map.getOrElse(key, Set()) + ce
     val newMap = map + (key -> set)
-    new NewIndex(newMap, indexMethod)
+    new Index(newMap, indexMethod)
   }
   
-  def - (ce: CompactEntity): NewIndex[IndexType] = {
+  def ++ (entities: Set[CompactEntity]): Index[IndexType] = entities.foldLeft(this) {(index, entity) => index + entity}
+  
+  def - (ce: CompactEntity): Index[IndexType] = {
     val key = indexMethod(ce)
     val set = map(key) - ce
     val newMap = map + (key -> set)
-    new NewIndex(newMap, indexMethod)
+    new Index(newMap, indexMethod)
   }
+  
+  def -- (entities: Set[CompactEntity]): Index[IndexType] = entities.foldLeft(this) {(index, entity) => index - entity}
   
   def entities = map.foldLeft(Set[CompactEntity]()) {
 	  (set, tuple) => set ++ tuple._2

@@ -14,12 +14,16 @@ object Main extends App {
 	run()
 	
 	def run() {
-		val dir = new File("data/takst/20120101")
-		val pricelists = Loader.loadPricelist(dir, None)
-		val index = pricelists.entities("Laegemiddel").indexes("drugid")
-		val res = index.map(28100734576L)
-		println(res)
+	  val dir = new File("data/takst/20120101")
+	  val pricelist = Loader.loadPricelist(dir, None)
+	  val index = pricelist.map("Laegemiddel")("drugid")
+	  println(index == 28103666304L)
 	}
-	
+
+	def allPricelists() {
+	  val dir = new File("data/takst")
+	  val pricelists = Loader.loadPricelists(dir)
+	  println("DONE " + pricelists)
+	}
 	
 }

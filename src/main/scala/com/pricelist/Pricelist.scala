@@ -1,110 +1,91 @@
 package com.pricelist
-import scala.collection.immutable.SortedMap
 import scala.collection.immutable.TreeMap
+import scala.collection.immutable.SortedMap
 
 object Pricelist {
 
-	val declaredIndexes = Map[String, Seq[IndexDeclaration]](
-	    "Laegemiddel" -> List(new LongIndexDeclaration("drugid", (ce: CompactEntity) => ce.getValue("drugid").asInstanceOf[Long]))
-	)
-	
-	def getIndexAttributes(entityName: String) = declaredIndexes.getOrElse(entityName, List())
-	
-}
-
-abstract class IndexDeclaration(val name: String, val method: CompactEntity => Ordered[_]) {
-  def emptyMap: TreeMap[Ordered[_], Set[CompactEntity]]
-}
-
-class LongIndexDeclaration(name: String, method: CompactEntity => Ordered[_]) extends IndexDeclaration(name, method) {
+  val declaredIndexes = Map[String, Map[String,DeclaredIndexes[_]]](
+    declare[String]("Administrationsvej", "kode"),
+    declare[String]("ATCKoderOgTekst", "tekst"),
+    declare[String]("Beregningsregler", "kode"),
+    declare[Long]("Dosering", "doseringKode"),
+    declare[Long]("Doseringskode", "drugid"),
+    declare[String]("EmballagetypeKoder", "kode"),
+    declare[Long]("Enhedspriser", "varenummer"),
+    declare[Long]("Firma", "firmanummer"),
+    declare[Long]("Indholdsstoffer", "drugID"),
+    declare[Long]("Indikation", "indikationskode"),
+    declare[Long]("Indikationskode", "drugID"),
+    declare[String]("Klausulering", "kode"),
+    declare[Long]("Laegemiddel", "drugid"),
+    declare[Long]("LaegemiddelAdministrationsvejRef", "drugId"),
+    declare[String]("LaegemiddelformBetegnelser", "kode"),
+    declare[Long]("Laegemiddelnavn", "drugid"),
+    declare[String]("Medicintilskud", "kode"),
+    declare[String]("Opbevaringsbetingelser", "kode"),
+    declare[Long]("OplysningerOmDosisdispensering", "drugid"),
+    declare[Long]("Pakning", "drugid"),
+    declare[Long]("Pakningskombinationer", "varenummerOrdineret"),
+    declare[Long]("PakningskombinationerUdenPriser", "varenummerOrdineret"),
+    //declare[...]("Pakningsstoerrelsesenhed", "enheder"),
+    declare[Long]("Priser", "varenummer"),
+    declare[Long]("Rekommandationer", "varenummer"),
+    declare[String]("SpecialeForNBS", "kode"),
+    //declare[...]("Styrkeenhed", "enheder"),
+    declare[Long]("Substitution", "substitutionsgruppenummer"),
+    declare[Long]("SubstitutionAfLaegemidlerUdenFastPris", "varenummer"),
+    //declare[Long]("Takst", "substitutionsgruppenummer"), I dont think we should load this one
+    //declare[Long]("Tilskudsintervaller", "type + niveau"),
+    declare[Long]("TilskudsprisgrupperPakningsniveau", "varenummer"),
+    declare[Long]("UdgaaedeNavne", "drugid"),
+    declare[String]("Udleveringsbestemmelser", "kode")
+  )
   
-  //wrrr can make this line work without hacking the type systen, it should be possible!!
-  override def emptyMap = TreeMap[Long, Set[CompactEntity]]().asInstanceOf[TreeMap[Ordered[_], Set[CompactEntity]]]
-}
-
-class Pricelist(es: Map[String, Set[CompactEntity]], previousPricelist: Option[Pricelist]) {
-  val entities: Map[String, Entities] = setup(es, previousPricelist)
-
-  //could not make the foldleft work without putting it inside the setup function
-  //dig into this later
-  def setup(es: Map[String, Set[CompactEntity]], previousPricelist: Option[Pricelist]): Map[String, Entities] = {
-    es.foldLeft(Map[String, Entities]()) {
-		(map, tuple) =>
-			val e = previousPricelist match {
-			  case Some(p) => p.entities.get(tuple._1)
-			  case None => None
-			}
-			map + (tuple._1 -> new Entities(tuple._2, Pricelist.getIndexAttributes(tuple._1), e))
-	}
-  }
-}
-
-class Entities(entities: Set[CompactEntity], indexDeclarations: Seq[IndexDeclaration], previous: Option[Entities]) {
-	
-	val indexes: Map[String, Index] = setup(entities, indexDeclarations, previous)
-	
-	//could not make the foldleft work without putting it inside the setup function
-	//dig into this later
-	def setup(entities: Set[CompactEntity], indexDeclarations: Seq[IndexDeclaration], previous: Option[Entities]): Map[String, Index] = {
-		indexDeclarations.foldLeft(Map[String, Index]()) {
-			(map, indexDeclaration) => 
-			  val index = previous match { //TODO this can be done smarter maybe monadic to avoid the some none stuff
-			    case Some(p) => p.indexes.get(indexDeclaration.name)
-			    case None => None 
-			  }
-			  map + (indexDeclaration.name -> new Index(entities, indexDeclaration, index))
-		}
-	}
-}
-
-class Index(entities: Set[CompactEntity], indexDeclaration: IndexDeclaration, previous: Option[Index]) {
-  
-  val map: TreeMap[Ordered[_], Set[CompactEntity]] = Index.createIndexFromPrevious(entities, indexDeclaration, previous)
-  
-}
-
-object Index {
-  
-  type IndexMap = TreeMap[Ordered[_], Set[CompactEntity]]
-
-  private def createIndexFromPrevious[IndexType](entities: Set[CompactEntity], indexDeclaration: IndexDeclaration, previous: Option[Index]) : IndexMap = {
-	
-    val initialMap: IndexMap = previous match {
-      case Some(p) => p.map
-      case None => indexDeclaration.emptyMap
-    }
-    
-    val previousEntitySet = initialMap.foldLeft(Set[CompactEntity]()) {
-		(set, tuple) => set ++ tuple._2
-	}
-    val map = removeDeleted(entities, initialMap, previousEntitySet)
-    addNewEntries(entities, indexDeclaration, previousEntitySet, map)
+  private def declare[T<%Ordered[T]](entityName: String, attributeName: String) = {
+	  entityName -> Map[String,DeclaredIndexes[_]](attributeName -> new DeclaredIndexes[T](attributeName, (ce) => ce.get(attributeName).asInstanceOf[T]))
   }
   
-  private def addNewEntries(entities: Set[CompactEntity], indexDeclaration: IndexDeclaration,
-      previousEntitySet: Set[CompactEntity], map: IndexMap) : IndexMap = {
-    val newEntities = entities -- previousEntitySet
-    newEntities.foldLeft(map) {
-      (map, entity) => 
-        val key = indexDeclaration.method(entity)
-        val set = map.getOrElse(key, Set())
-        map + (key -> (set + entity))
+  class DeclaredIndexes[IndexType<%Ordered[IndexType]](val name: String, indexMethod: CompactEntity => IndexType) {
+	//TODO should be possible without hacking the type system  
+    def emptyIndex: Index[Ordered[_]] = {
+     (new Index(TreeMap[IndexType, Set[CompactEntity]](), indexMethod)).asInstanceOf[Index[Ordered[_]]] 
     }
   }
   
-  private def removeDeleted(entities: Set[CompactEntity], map: IndexMap, 
-      previousEntitySet: Set[CompactEntity]) : IndexMap = {
-	val deletedEntities = previousEntitySet -- entities
-    
-    map.foldLeft(map) {
-      (map, tuple) => 
-        val key: Ordered[_] = tuple._1
-        val set = tuple._2
-        val newSet = set -- deletedEntities
-        if (newSet != set) {
-          map + (key -> newSet)
-        } else map
+  def apply(es: Map[String, Set[CompactEntity]], previousPricelist: Option[Pricelist]): Pricelist = {
+    val map = declaredIndexes.foldLeft(Map[String, Map[String, Index[Ordered[_]]]]()) {
+      (map, tuple) =>
+        val entityName = tuple._1
+        val declaredIndexes = tuple._2
+        val entityIndexMap = declaredIndexes.foldLeft(Map[String, Index[Ordered[_]]]()) {
+          (map, tuple) =>
+            val indexName = tuple._1
+            val indexDeclaration = tuple._2
+            val previousIndex: Option[Index[Ordered[_]]] = previousPricelist match {
+              case Some(p) if(p.map.contains(entityName) && p.map(entityName).contains(indexName)) => 
+                Some(p.map(entityName)(indexName).asInstanceOf[Index[Ordered[_]]]) //type hack...should be avoidable
+              case _ => None
+            }
+            if (es.contains(entityName)) {
+            	map + (indexName -> createIndex(es(entityName), indexDeclaration, previousIndex))
+            } else map
+        }
+        map + (entityName -> entityIndexMap)
     }
-  } 
+    new Pricelist(map)
+  }
   
+  private def createIndex(entities: Set[CompactEntity], declaredIndex: DeclaredIndexes[_], previous: Option[Index[Ordered[_]]]): Index[Ordered[_]] = {
+    val index: Index[Ordered[_]] = previous match {
+      case Some(pi) => pi
+      case None => declaredIndex.emptyIndex
+    }
+    val previousEntities = index.entities
+    val deletedEntities = previousEntities -- entities
+    val newEntities = entities -- previousEntities
+    (index -- deletedEntities) ++ newEntities 
+  }
 }
+
+class Pricelist private(val map: Map[String, Map[String, Index[Ordered[_]]]])
+
