@@ -30,8 +30,11 @@ class Index[IndexType<%Ordered[IndexType]] (val map: SortedMap[IndexType, Set[Co
   
   def + (ce: CompactEntity): Index[IndexType] = {
     val key = indexMethod(ce)
-    val set = map.getOrElse(key, Set()) + ce
-    val newMap = map + (key -> set)
+    val newMap = if (key != null) {
+    	val set = map.getOrElse(key, Set()) + ce
+    	map + (key -> set)
+    } else map
+    
     new Index(newMap, indexMethod)
   }
   

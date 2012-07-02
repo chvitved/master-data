@@ -31,8 +31,12 @@ object Loader {
 		val pricelistMap = pricelistElems.foldLeft(Map[String, Set[CompactEntity]]()) {
 		  (map, elements) => 
 		    val entities = ObjectParser(elements.getEntities().toSet)
-		    val name = entities.elements.next().name
-		    map + (name -> entities)
+		    if (entities.isEmpty) {
+		      map
+		    } else { 
+		    	val name = entities.elements.next().name
+		    	map + (name -> entities)
+			}
 		}
 		Pricelist(pricelistMap, previous)
 	}

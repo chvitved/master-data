@@ -4,48 +4,60 @@ import scala.collection.immutable.SortedMap
 
 object Pricelist {
 
-  val declaredIndexes = Map[String, Map[String,DeclaredIndexes[_]]](
-    declare[String]("Administrationsvej", "kode"),
-    declare[String]("ATCKoderOgTekst", "tekst"),
-    declare[String]("Beregningsregler", "kode"),
-    declare[Long]("Dosering", "doseringKode"),
-    declare[Long]("Doseringskode", "drugid"),
-    declare[String]("EmballagetypeKoder", "kode"),
-    declare[Long]("Enhedspriser", "varenummer"),
-    declare[Long]("Firma", "firmanummer"),
-    declare[Long]("Indholdsstoffer", "drugID"),
-    declare[Long]("Indikation", "indikationskode"),
-    declare[Long]("Indikationskode", "drugID"),
-    declare[String]("Klausulering", "kode"),
-    declare[Long]("Laegemiddel", "drugid"),
-    declare[Long]("LaegemiddelAdministrationsvejRef", "drugId"),
-    declare[String]("LaegemiddelformBetegnelser", "kode"),
-    declare[Long]("Laegemiddelnavn", "drugid"),
-    declare[String]("Medicintilskud", "kode"),
-    declare[String]("Opbevaringsbetingelser", "kode"),
-    declare[Long]("OplysningerOmDosisdispensering", "drugid"),
-    declare[Long]("Pakning", "drugid"),
-    declare[Long]("Pakningskombinationer", "varenummerOrdineret"),
-    declare[Long]("PakningskombinationerUdenPriser", "varenummerOrdineret"),
-    //declare[...]("Pakningsstoerrelsesenhed", "enheder"),
-    declare[Long]("Priser", "varenummer"),
-    declare[Long]("Rekommandationer", "varenummer"),
-    declare[String]("SpecialeForNBS", "kode"),
-    //declare[...]("Styrkeenhed", "enheder"),
-    declare[Long]("Substitution", "substitutionsgruppenummer"),
-    declare[Long]("SubstitutionAfLaegemidlerUdenFastPris", "varenummer"),
-    //declare[Long]("Takst", "substitutionsgruppenummer"), I dont think we should load this one
-    //declare[Long]("Tilskudsintervaller", "type + niveau"),
-    declare[Long]("TilskudsprisgrupperPakningsniveau", "varenummer"),
-    declare[Long]("UdgaaedeNavne", "drugid"),
-    declare[String]("Udleveringsbestemmelser", "kode")
-  )
+  val DeclaredIndex = setupIndexes(
+	    declare[String]("Administrationsvej", "kode"),
+	    declare[String]("ATCKoderOgTekst", "tekst"),
+	    declare[String]("Beregningsregler", "kode"),
+	    declare[Long]("Dosering", "doseringKode"),
+	    declare[Long]("Doseringskode", "drugid"),
+	    declare[String]("EmballagetypeKoder", "kode"),
+	    declare[Long]("Enhedspriser", "varenummer"),
+	    declare[Long]("Firma", "firmanummer"),
+	    declare[Long]("Indholdsstoffer", "drugID"),
+	    declare[Long]("Indikation", "indikationskode"),
+	    declare[Long]("Indikationskode", "drugID"),
+	    declare[String]("Klausulering", "kode"),
+	    declare[Long]("Laegemiddel", "drugid"),
+	    declare[String]("Laegemiddel", "navn"),
+	    declare[Long]("LaegemiddelAdministrationsvejRef", "drugId"),
+	    declare[String]("LaegemiddelformBetegnelser", "kode"),
+	    declare[Long]("Laegemiddelnavn", "drugid"),
+	    declare[String]("Medicintilskud", "kode"),
+	    declare[String]("Opbevaringsbetingelser", "kode"),
+	    declare[Long]("OplysningerOmDosisdispensering", "drugid"),
+	    declare[Long]("Pakning", "drugid"),
+	    declare[Long]("Pakningskombinationer", "varenummerOrdineret"),
+	    declare[Long]("PakningskombinationerUdenPriser", "varenummerOrdineret"),
+	    //declare[...]("Pakningsstoerrelsesenhed", "enheder"),
+	    declare[Long]("Priser", "varenummer"),
+	    declare[Long]("Rekommandationer", "varenummer"),
+	    declare[String]("SpecialeForNBS", "kode"),
+	    //declare[...]("Styrkeenhed", "enheder"),
+	    declare[Long]("Substitution", "substitutionsgruppenummer"),
+	    declare[Long]("SubstitutionAfLaegemidlerUdenFastPris", "varenummer"),
+	    //declare[Long]("Takst", "substitutionsgruppenummer"), I dont think we should load this one
+	    //declare[Long]("Tilskudsintervaller", "type + niveau"),
+	    declare[Long]("TilskudsprisgrupperPakningsniveau", "varenummer"),
+	    declare[Long]("UdgaaedeNavne", "drugid"),
+	    declare[String]("Udleveringsbestemmelser", "kode")
+    )
   
-  private def declare[T<%Ordered[T]](entityName: String, attributeName: String) = {
-	  entityName -> Map[String,DeclaredIndexes[_]](attributeName -> new DeclaredIndexes[T](attributeName, (ce) => ce.get(attributeName).asInstanceOf[T]))
+  private def setupIndexes(tuples: (String, String, DeclaredIndex[_])*) : Map[String, Map[String,DeclaredIndex[_]]] = {
+    tuples.foldLeft(Map[String, Map[String,DeclaredIndex[_]]]()) {
+      (map, indexdeclaration) => 
+        val entityName = indexdeclaration._1
+        val attributeName = indexdeclaration._2
+        val declaredIndex = indexdeclaration._3
+        val innerMap = map.getOrElse(entityName, Map[String,DeclaredIndex[_]]())
+        map + (entityName -> (innerMap + (attributeName -> declaredIndex)))
+    }
   }
   
-  class DeclaredIndexes[IndexType<%Ordered[IndexType]](val name: String, indexMethod: CompactEntity => IndexType) {
+  private def declare[T<%Ordered[T]](entityName: String, attributeName: String): (String, String, DeclaredIndex[_]) = {
+	  (entityName, attributeName, new DeclaredIndex[T](attributeName, (ce) => ce.get.getOrElse(attributeName, null).asInstanceOf[T]))
+  }
+  
+  class DeclaredIndex[IndexType<%Ordered[IndexType]](val name: String, indexMethod: CompactEntity => IndexType) {
 	//TODO should be possible without hacking the type system  
     def emptyIndex: Index[Ordered[_]] = {
      (new Index(TreeMap[IndexType, Set[CompactEntity]](), indexMethod)).asInstanceOf[Index[Ordered[_]]] 
@@ -53,11 +65,11 @@ object Pricelist {
   }
   
   def apply(es: Map[String, Set[CompactEntity]], previousPricelist: Option[Pricelist]): Pricelist = {
-    val map = declaredIndexes.foldLeft(Map[String, Map[String, Index[Ordered[_]]]]()) {
+    val map = DeclaredIndex.foldLeft(Map[String, Map[String, Index[Ordered[_]]]]()) {
       (map, tuple) =>
         val entityName = tuple._1
-        val declaredIndexes = tuple._2
-        val entityIndexMap = declaredIndexes.foldLeft(Map[String, Index[Ordered[_]]]()) {
+        val DeclaredIndex = tuple._2
+        val entityIndexMap = DeclaredIndex.foldLeft(Map[String, Index[Ordered[_]]]()) {
           (map, tuple) =>
             val indexName = tuple._1
             val indexDeclaration = tuple._2
@@ -72,20 +84,22 @@ object Pricelist {
         }
         map + (entityName -> entityIndexMap)
     }
-    new Pricelist(map)
+    new Pricelist(map.asInstanceOf[Map[String, Map[String, Index[Any]]]]) //TODO type hack
   }
   
-  private def createIndex(entities: Set[CompactEntity], declaredIndex: DeclaredIndexes[_], previous: Option[Index[Ordered[_]]]): Index[Ordered[_]] = {
+  private def createIndex(entities: Set[CompactEntity], declaredIndex: DeclaredIndex[_], previous: Option[Index[Ordered[_]]]): Index[Ordered[_]] = {
     val index: Index[Ordered[_]] = previous match {
       case Some(pi) => pi
       case None => declaredIndex.emptyIndex
     }
     val previousEntities = index.entities
+    
     val deletedEntities = previousEntities -- entities
     val newEntities = entities -- previousEntities
+    //println("Entity: " + entities.first.name + " Number of entities " + entities.size + " Deleted: " + deletedEntities.size + " Added: " + newEntities.size)
     (index -- deletedEntities) ++ newEntities 
   }
 }
 
-class Pricelist private(val map: Map[String, Map[String, Index[Ordered[_]]]])
+class Pricelist private(val map: Map[String, Map[String, Index[Any]]])
 
