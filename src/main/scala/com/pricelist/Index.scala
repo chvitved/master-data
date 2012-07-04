@@ -33,7 +33,7 @@ class Index[IndexType<%Ordered[IndexType]] (val map: SortedMap[IndexType, Set[Co
     val newMap = if (key != null) {
     	val set = map.getOrElse(key, Set()) + ce
     	map + (key -> set)
-    } else map
+    } else map //TODO we should probably not just throw away null values
     
     new Index(newMap, indexMethod)
   }

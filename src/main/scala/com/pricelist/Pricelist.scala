@@ -41,6 +41,8 @@ object Pricelist {
 	    declare[Long]("UdgaaedeNavne", "drugid"),
 	    declare[String]("Udleveringsbestemmelser", "kode")
     )
+    
+    val a = classOf[String]
   
   private def setupIndexes(tuples: (String, String, DeclaredIndex[_])*) : Map[String, Map[String,DeclaredIndex[_]]] = {
     tuples.foldLeft(Map[String, Map[String,DeclaredIndex[_]]]()) {
@@ -54,7 +56,8 @@ object Pricelist {
   }
   
   private def declare[T<%Ordered[T]](entityName: String, attributeName: String): (String, String, DeclaredIndex[_]) = {
-	  (entityName, attributeName, new DeclaredIndex[T](attributeName, (ce) => ce.get.getOrElse(attributeName, null).asInstanceOf[T]))
+	  def indexMethod[T] = (ce: CompactEntity) => ce.get.getOrElse(attributeName, null).asInstanceOf[T]
+	  (entityName, attributeName, new DeclaredIndex[T](attributeName, indexMethod))
   }
   
   class DeclaredIndex[IndexType<%Ordered[IndexType]](val name: String, indexMethod: CompactEntity => IndexType) {
@@ -96,7 +99,7 @@ object Pricelist {
     
     val deletedEntities = previousEntities -- entities
     val newEntities = entities -- previousEntities
-    //println("Entity: " + entities.first.name + " Number of entities " + entities.size + " Deleted: " + deletedEntities.size + " Added: " + newEntities.size)
+    println("Entity: " + entities.first.name + " Number of entities " + entities.size + " Deleted: " + deletedEntities.size + " Added: " + newEntities.size)
     (index -- deletedEntities) ++ newEntities 
   }
 }

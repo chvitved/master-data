@@ -7,6 +7,9 @@ object CompactEntity {
 	var reverseMap = Map[String, Map[Int, String]]()
 		
 	def apply(entityName: String, entityAsMap: Map[String, Any]): CompactEntity = {
+	  if (entityAsMap.keys.size > 32) {
+	    throw new Exception("We use an integer as bitmap and cannot store entities with more than 32 values")
+	  }
 	  val eName = entityName.intern()
       val indexValueTuple = for((name, value) <- entityAsMap) yield {
         val eMap = map.getOrElse(eName, Map())
@@ -14,7 +17,7 @@ object CompactEntity {
           case Some(index) => (index, value)
           case None => {
             val index = ValuePool.intern(eMap.size)
-            val newMap = eMap + (name -> index)
+            val newMap = eMap + (name.intern -> index)
             map = map + (eName -> newMap)
             val newReverseMap = reverseMap.getOrElse(eName, Map()) + (index -> name)
             reverseMap = reverseMap + (eName -> newReverseMap)
@@ -29,7 +32,7 @@ object CompactEntity {
 		val indexBitmap = values.map(_._1).foldLeft(0){(acc, index) => acc | (1 << index)} 
 		val sortedValues = values.toArray.sortWith{(v1, v2) => v1._1 < v2._1}.map(_._2)
 		val svInterned = sortedValues.map(ValuePool.intern(_))
-		val ce = new CompactEntity(name, indexBitmap, svInterned)
+		val ce = new CompactEntity(name, ValuePool.intern(indexBitmap), svInterned)
 		CompactEntityPool.intern(ce)
 	}
 	

@@ -4,13 +4,12 @@ import java.util.Calendar
 import dk.trifork.sdm.importer.takst.model.DivEnheder
 
 object ValuePool {
-
   
-  var allValues = Map[Any, Any]()
+  var allValues = scala.collection.mutable.Map[Any, Any]()
   
   val types = Set[Class[_]](
 	    classOf[Int], classOf[Boolean], classOf[Date],
-	    classOf[Calendar], classOf[DivEnheder]
+	    classOf[Calendar], classOf[DivEnheder], classOf[java.lang.Long], classOf[Long]
 	)
   
   def intern[T](v: T): T = {
@@ -18,7 +17,6 @@ object ValuePool {
       v.asInstanceOf[String].intern().asInstanceOf[T]
     } else if (shouldPoolValue(v)) {
     	//interesting what makes sence o pool
-    	//does it make sense to pool longs?
     	//measure this on existing pricelists
     	add(v)
     } else v 
@@ -26,7 +24,7 @@ object ValuePool {
   }
   
   def shouldPoolValue(value: Any) = {
-	  types.exists(_.isAssignableFrom(value.getClass))
+	  types.exists(_ == value.getClass)
   }
   
   private def add[T](v: T): T = {

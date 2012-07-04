@@ -18,10 +18,11 @@ object Loader {
 		pricelistDirs.foldLeft(List[Pricelist]()){(list, dir) =>
 		  println("loading pricelist " + counter)
 			val pricelist = loadPricelist(dir, previous) 
-			printMem()
 			counter += 1
 			previous = Some(pricelist)
-			pricelist :: list
+			printMem()
+		  	printPools()
+		  	pricelist :: list
 		}
 	}
 
@@ -41,10 +42,23 @@ object Loader {
 		Pricelist(pricelistMap, previous)
 	}
 	
-	private def printMem() = {
+	private def printMem() {
 		System.gc();
 		val r = Runtime.getRuntime();
 		val mem = (r.totalMemory() - r.freeMemory()) / (1024*1024); //megabytes
 		println("used mem: " + mem);
+	}
+	
+	var lastCePoolSize = 0;
+	var lastValuePoolSize = 0;
+	private def printPools() {
+	  val newValueSize = ValuePool.allValues.size
+	  val newCeSize = CompactEntityPool.allEntities.size
+	  println("value pool size " + newValueSize)
+	  println("value pool grown " + (newValueSize - lastValuePoolSize))
+	  println("ce pool size " + newCeSize)
+	  println("ce pool grown " + (newCeSize - lastCePoolSize))
+	  lastCePoolSize = newCeSize
+	  lastValuePoolSize = newValueSize
 	}
 }

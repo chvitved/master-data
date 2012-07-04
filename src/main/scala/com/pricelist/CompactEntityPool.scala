@@ -2,10 +2,8 @@ package com.pricelist
 
 object CompactEntityPool {
   
-  type Entity = Map[String, Any]
+  var allEntities = scala.collection.mutable.Map[CompactEntity, CompactEntity]()
   
-  var allEntities = Map[CompactEntity, CompactEntity]()
-
   def intern(e: CompactEntity): CompactEntity = {
     allEntities.get(e) match {
       case Some(internalEntity) => {
